@@ -28,9 +28,9 @@ import util.State;
 public class Server implements Runnable {
 	ServerSocket ss;
 	Thread mainThread;
-	ArrayList<ServerClient> serverClients; 
-	ArrayList<Integer> scores;
-	public int port;
+	ArrayList<ServerClient> serverClients;
+	public static final int DEFAULT_PORT = 2000;
+	int port;
 	public int maxPlayers = 5;
 	boolean running;
 	boolean playingNow = false; // se met en true après le premier clic, et se remet en false lors d'une victoire ou d'une défaite
@@ -51,7 +51,7 @@ public class Server implements Runnable {
 	
 	public static void main(String...strings) {
 		try {
-			new Server(2000);
+			new Server(DEFAULT_PORT);
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -105,7 +105,7 @@ public class Server implements Runnable {
 	public void start() {
 		System.out.println("Server was created. Listening to PORT " + port);
 		serverClients = new ArrayList<ServerClient>();
-		scores = new ArrayList<Integer>();
+		//scores = new ArrayList<Integer>();
 		running = true;
 		mainThread = new Thread(this);
 		mainThread.start();
@@ -137,7 +137,7 @@ public class Server implements Runnable {
 				e.printStackTrace();
 			}
 		}
-		scores.remove(serverClients.indexOf(serverClient));
+		//scores.remove(serverClients.indexOf(serverClient));
 		serverClients.remove(serverClient);
 		System.out.println(serverClient.getName() + " exited the game, there are now " + serverClients.size() + " connected.");
 	}
@@ -164,12 +164,12 @@ public class Server implements Runnable {
 	public void verifyGame() {
 		//System.out.println("Verifying game. Number of clients : " + serverClients.size() + " Number of people playing : " + actualPlayers);
 		if(actualPlayers <= 0 && serverClients.size() > 0) {
-			playingNow = false; //envoyer à tous les clients qu'ils peuvent appuyer sur le Reset + message affichant les scores définitifs
 			timer.stop();
+			playingNow = false; //envoyer à tous les clients qu'ils peuvent appuyer sur le Reset + message affichant les scores définitifs
 		}
 		if(serverClients.size() <= 0 && standby == false) {
-			setGame(); // quand il n'y a personne et que le jeu n'est pas réinitialisé, on le relance
 			timer.stop();
+			setGame(); // quand il n'y a personne et que le jeu n'est pas réinitialisé, on le relance
 		}
 	}
 	
@@ -189,14 +189,10 @@ public class Server implements Runnable {
 	
 	public void setGame() {
 		System.out.println("Game restarted");
-		standby = true;
 		c = new Champ(Level.HARD);
 		states = new State[c.getDimX()][c.getDimY()];
 		elapsedTime = 0;
 		seconds = 0;
-		for(int i=0; i< scores.size(); i++) {
-			scores.set(i,0); //reset les scores
-		}
 		for (int x = 0; x < c.getDimX(); x++)
 			for (int y = 0; y < c.getDimY(); y++) {
 				states[x][y] = State.HIDDEN;
@@ -210,7 +206,7 @@ public class Server implements Runnable {
 				e.printStackTrace();
 			}
 		actualPlayers = serverClients.size();
-		
+		standby = true;
 	}
 	
 	/**
@@ -221,16 +217,16 @@ public class Server implements Runnable {
 	 * @param xPos
 	 * @param yPos
 	 */
-	
 	public void score(ServerClient serverClient, int xPos, int yPos) {
 		int revealedCases = 0;
 		int hiddenCases = 0;
 		int s;
 		int index;
-		s = scores.get(serverClients.indexOf(serverClient)) + c.detectMines(xPos, yPos) + 1;
+		s = serverClient.getScore() + c.detectMines(xPos, yPos) + 1;
 		index = serverClients.indexOf(serverClient);
 		System.out.println("Score and index : " + s + " " + index);
-		scores.set(index, s); //on a un point même si on clique dans le vide, et plus sinon
+		serverClient.setScore(s);
+		//scores.set(index, s); //on a un point même si on clique dans le vide, et plus sinon
 		for(ServerClient client : serverClients) {
 			try {
 				client.getDos().writeUTF("/score " + s + " " + index + " " + serverClient.getName());
@@ -269,7 +265,6 @@ public class Server implements Runnable {
 	 * @param serverClient
 	 * @throws IOException
 	 */
-	
 	public void play(int xPos, int yPos, ServerClient serverClient) throws IOException {
 		System.out.println(states[xPos][yPos]);
 		if((states[xPos][yPos] != State.HIDDEN && states[xPos][yPos] != State.FLAGGED) || serverClient.hasLost()) return; //lorsqu'on joue (clic gauche), la case doit être cachée ou flaggée
@@ -330,24 +325,13 @@ public class Server implements Runnable {
 	 * @param serverClient
 	 * @throws IOException
 	 */
-	
 	public void flag(int xPos, int yPos, ServerClient serverClient) throws IOException {
-		if(states[xPos][yPos] == State.HIDDEN) {
-			if(c.isMine(xPos, yPos)) {
-				c.decrementMines();
-				System.out.println("Mines remaining : " + c.getCurrentNbMines());
+			serverClient.setFlag(xPos, yPos, !serverClient.getFlag(xPos, yPos));
+			if(serverClient.getFlag(xPos, yPos)){
+				serverClient.getDos().writeUTF("/flag " + xPos + " " + yPos + " " + serverClient.getNbFlags());
+			} else {
+				serverClient.getDos().writeUTF("/unflag " + xPos + " " + yPos + " " + serverClient.getNbFlags());
 			}
-			states[xPos][yPos] = State.FLAGGED;
-			
-		}
-		else if (states[xPos][yPos] == State.FLAGGED) {
-			if(c.isMine(xPos, yPos)) {
-				c.incrementMines();
-				System.out.println("Mines remaining : " + c.getCurrentNbMines());
-			}
-			states[xPos][yPos] = State.HIDDEN;
-		}
-		for (ServerClient client : serverClients) client.getDos().writeUTF("/reveal " + xPos + " " + yPos + " " + states [xPos][yPos] + " " + colors[xPos][yPos]);
 	}
 	
 	/**
@@ -356,17 +340,14 @@ public class Server implements Runnable {
 	 * @param serverClient
 	 * @throws IOException
 	 */
-	
 	public void newPlayer(ServerClient serverClient) throws IOException {
 		if(serverClients.size() > maxPlayers) {
 			serverClient.getDos().writeUTF("/maxplayers");
-			scores.remove(serverClients.indexOf(serverClient));
 			serverClients.remove(serverClient);
 			System.out.println(serverClient.getName() + " could not enter the game because the party is already full.");
 		}
 		if(standby == false) {
 			serverClient.getDos().writeUTF("/alreadystarted");
-			scores.remove(serverClients.indexOf(serverClient));
 			serverClients.remove(serverClient);
 			System.out.println(serverClient.getName() + " could not enter the game because the game already started.");
 		}
@@ -374,21 +355,21 @@ public class Server implements Runnable {
 			//envoyer la grille actualisée au client
 			serverClient.getDos().writeUTF("/success"); //connection succeeded, sending idle face
 			serverClient.getDos().writeUTF("/setGrid " + c.getDimX() + " " + c.getDimY());
+			serverClient.setScore(0);
+			serverClient.unLost();
 			for(ServerClient client : serverClients) {
 				if(client != serverClient) {
 					String name = client.getName();
 					int index = serverClients.indexOf(client);
 					serverClient.getDos().writeUTF("/setNames " + index + " " + name);
 				}
-				serverClient.getDos().writeUTF("/score " + scores.get(serverClients.indexOf(client)) + " " + serverClients.indexOf(client) + " .");
+				serverClient.getDos().writeUTF("/score " + client.getScore() + " " + serverClients.indexOf(client) + " .");
 			}
-			serverClient.unLost();
 			for(int x=0; x < c.getDimX(); x++) {
 				for(int y=0; y < c.getDimY(); y++) {
 					serverClient.getDos().writeUTF("/reveal " + x + " " + y + " " + states[x][y].name() + " " + colors[x][y].name());
 				}
 			}
-			serverClient.unLost();
 			actualPlayers ++;
 		}
 	}
@@ -431,7 +412,7 @@ public class Server implements Runnable {
 				Socket s = ss.accept();
 				serverClients.add(new ServerClient(this, s));
 				int playerScore = 0;
-				scores.add(playerScore);
+				//scores.add(playerScore);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

@@ -27,6 +27,7 @@ public class ServerClient implements Runnable{
 	public ServerClient(Server server, Socket socket) {
 		this.server = server;
 		this.socket = socket;
+		flags = new boolean[server.getChamp().getDimX()][server.getChamp().getDimY()];
 		connected = true;
 		try {
 			dis = new DataInputStream(socket.getInputStream());
@@ -138,6 +139,24 @@ public class ServerClient implements Runnable{
 	
 	public void setScore(int s) {
 		score = s;
+	}
+	
+	public void setFlag(int xPos, int yPos, boolean flag) {
+		flags[xPos][yPos] = flag;
+	}
+	
+	public boolean getFlag(int xPos, int yPos) {
+		return flags[xPos][yPos];
+	}
+	
+	public int getNbFlags() {
+		int nbFlags = 0;
+		for(int i=0; i<flags.length; i++) {
+			for(int j=0; j<flags[0].length; j++) {
+				if(flags[i][j]) nbFlags ++;
+			}
+		}
+		return nbFlags;
 	}
 	
 	public int getScore() {
