@@ -122,7 +122,7 @@ public class Server implements Runnable {
 				// TODO Auto-generated method stub
 				verifyGame();
 			}
-		}, 0, 10, TimeUnit.SECONDS);
+		}, 0, 30, TimeUnit.SECONDS);
 	}
 	
 	/**
@@ -144,6 +144,8 @@ public class Server implements Runnable {
 		//scores.remove(serverClients.indexOf(serverClient));
 		serverClients.remove(serverClient);
 		System.out.println(serverClient.getName() + " exited the game, there are now " + serverClients.size() + " connected.");
+		sFrame.newLine(serverClient.getName() + " exited the game, there are now " + serverClients.size() + " connected.");
+		verifyGame();
 	}
 	
 	/**
@@ -194,14 +196,17 @@ public class Server implements Runnable {
 	public void setGame() {
 		c = new Champ(Level.HARD);
 		states = new State[c.getDimX()][c.getDimY()];
-		elapsedTime = 0;
-		seconds = 0;
-		standby = true;
-		for (int x = 0; x < c.getDimX(); x++)
+		colors = new Colors[c.getDimX()][c.getDimY()];
+		for (int x = 0; x < c.getDimX(); x++) {
 			for (int y = 0; y < c.getDimY(); y++) {
 				states[x][y] = State.HIDDEN;
 				colors[x][y] = Colors.DEFAULT;
 			}
+		}
+		standby = true;
+		playingNow = false;
+		elapsedTime = 0;
+		seconds = 0;
 		for (ServerClient client : serverClients) {
 			try {
 				newPlayer(client);
@@ -418,14 +423,14 @@ public class Server implements Runnable {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+		System.out.println("Waiting for new players ...");
+		sFrame.newLine("Waiting for new players ...");
 		
 		while (running) {
 			try {
-				System.out.println("Waiting for new players ...");
-				sFrame.newLine("Waiting for new players ...");
 				Socket s = ss.accept();
 				serverClients.add(new ServerClient(this, s));
-				int playerScore = 0;
+				//int playerScore = 0;
 				//scores.add(playerScore);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
