@@ -9,8 +9,9 @@ import java.util.*;
 //SI LA PARTIE EST EN LIGNE, LIER LE CHAMP AU SERVEUR, SINON AU CLIENT
 public class Champ {
 	//variables
-	private final static int [] LEVELSIZE = {10, 20, 30};
-	private final static int [] NBMINES = {15, 60, 135};
+	private final static int [] LEVELSIZEX = {10, 17, 30};
+	private final static int [] LEVELSIZEY = {10, 17, 17};
+	private final static int [] NBMINES = {15, 45, 90};
 	private boolean[][] champMines;
 	private Random alea = new Random();
 	private int numberOfMines = 0;
@@ -24,7 +25,7 @@ public class Champ {
 	}
 	public Champ(Level level) {
 		if(level != Level.CUSTOM) {
-			champMines = new boolean[LEVELSIZE[level.ordinal()]][LEVELSIZE[level.ordinal()]];
+			champMines = new boolean[LEVELSIZEX[level.ordinal()]][LEVELSIZEY[level.ordinal()]];
 			numberOfMines = NBMINES[level.ordinal()];
 			numberOfMinesInGame = numberOfMines;
 			placeMines();
@@ -84,7 +85,7 @@ public class Champ {
 		}
 		for(int k=nbMines; k!=0;) { //on voit si une mine est déjà placée
 			int x = alea.nextInt(champMines.length);
-			int y = alea.nextInt(champMines.length);
+			int y = alea.nextInt(champMines[0].length);
 			if(!champMines[x][y]) {
 				champMines[x][y] = true;
 				k --;
