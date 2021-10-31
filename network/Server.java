@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.swing.Timer;
 
+import display.ServerFrame;
 import util.Champ;
 import util.Colors;
 import util.Level;
@@ -26,6 +27,7 @@ import util.State;
  */
 
 public class Server implements Runnable {
+	ServerFrame sFrame;
 	ServerSocket ss;
 	Thread mainThread;
 	ArrayList<ServerClient> serverClients;
@@ -95,6 +97,7 @@ public class Server implements Runnable {
 		this.port = port;
 		ss = new ServerSocket(port);
 		running = false;
+		sFrame = new ServerFrame(this);
 		start();
 	}
 	
@@ -104,6 +107,7 @@ public class Server implements Runnable {
 	 */
 	public void start() {
 		System.out.println("Server was created. Listening to PORT " + port);
+		sFrame.newLine("Server was created. Listening to PORT " + port);
 		serverClients = new ArrayList<ServerClient>();
 		//scores = new ArrayList<Integer>();
 		running = true;
@@ -162,7 +166,7 @@ public class Server implements Runnable {
 	 */
 	
 	public void verifyGame() {
-		//System.out.println("Verifying game. Number of clients : " + serverClients.size() + " Number of people playing : " + actualPlayers);
+		System.out.println("Verifying game. Number of clients : " + serverClients.size() + " Number of people playing : " + actualPlayers);
 		if(actualPlayers <= 0 && serverClients.size() > 0) {
 			timer.stop();
 			playingNow = false; //envoyer à tous les clients qu'ils peuvent appuyer sur le Reset + message affichant les scores définitifs
@@ -188,25 +192,27 @@ public class Server implements Runnable {
 	 */
 	
 	public void setGame() {
-		System.out.println("Game restarted");
 		c = new Champ(Level.HARD);
 		states = new State[c.getDimX()][c.getDimY()];
 		elapsedTime = 0;
 		seconds = 0;
+		standby = true;
 		for (int x = 0; x < c.getDimX(); x++)
 			for (int y = 0; y < c.getDimY(); y++) {
 				states[x][y] = State.HIDDEN;
 				colors[x][y] = Colors.DEFAULT;
 			}
-		for (ServerClient client : serverClients)
+		for (ServerClient client : serverClients) {
 			try {
 				newPlayer(client);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+		}
 		actualPlayers = serverClients.size();
-		standby = true;
+		System.out.println("Game restarted");
+		sFrame.newLine("Game restarted.");
 	}
 	
 	/**
@@ -303,6 +309,7 @@ public class Server implements Runnable {
 					serverClient.justLost();
 				}
 				System.out.println("explosion");
+				sFrame.newLine(serverClient.getName() + " lost the game.");
 				
 			}
 			//Pas de mine
@@ -312,6 +319,7 @@ public class Server implements Runnable {
 				states[xPos][yPos] = State.values()[proximityMines];
 				for (ServerClient client : serverClients) client.getDos().writeUTF("/reveal " + xPos + " " + yPos + " " + states[xPos][yPos].name() + " " + colors[xPos][yPos].name()); //révéler la case pour tous les clients
 				score(serverClient, xPos, yPos);
+				sFrame.newLine(serverClient.getName() + " played at (" + xPos + ", " + yPos + ")");
 				//dans une partie en réseau, on ne rejoue pas autour.
 			}
 		}
@@ -382,6 +390,7 @@ public class Server implements Runnable {
 	public void sendNameToEveryone(ServerClient serverClient) throws IOException {
 		for (ServerClient client : serverClients) client.getDos().writeUTF("/connected " + serverClients.indexOf(serverClient) + " " + serverClient.getName());
 		System.out.println(actualPlayers + " people playing now.");
+		sFrame.newLine(serverClient.getName() + " connected to server. " + serverClients.size() + " players connected.");
 	}
 	
 	/**
@@ -390,6 +399,10 @@ public class Server implements Runnable {
 	 */
 	public Champ getChamp() {
 		return c;
+	}
+	
+	public int getPort() {
+		return port;
 	}
 	
 	/**
@@ -409,6 +422,7 @@ public class Server implements Runnable {
 		while (running) {
 			try {
 				System.out.println("Waiting for new players ...");
+				sFrame.newLine("Waiting for new players ...");
 				Socket s = ss.accept();
 				serverClients.add(new ServerClient(this, s));
 				int playerScore = 0;
