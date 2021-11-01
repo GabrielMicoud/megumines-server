@@ -4,6 +4,7 @@ package display;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
 import java.util.ArrayList;
 
 import javax.swing.JFrame;
@@ -20,20 +21,20 @@ public class ServerFrame extends JFrame {
 	private static final int HEIGHT = 300;
 	private static final int WIDTH = 500;
 	private static final int GRID_LINES = 10;
+	private static final String ICON = "img/megumin.png";
 	private JPanel panel;
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -6377437611832432328L;
-	private Server server;
 	private ArrayList<JLabel> lines = new ArrayList<JLabel>();
 
 	public ServerFrame(Server server) {
-		this.server = server;
 		panel = new JPanel();
 		setTitle("Megumines server");
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
-		panel.setBackground(Colors.BACKGROUND.color);
+		setIconImage(Toolkit.getDefaultToolkit().getImage(ICON));
+		panel.setBackground(Colors.DARK_BACKGROUND.color);
 		panel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
 		panel.setBorder(new CompoundBorder(panel.getBorder(), new EmptyBorder(20,20,20,20)));
 		panel.setLayout(new GridLayout(GRID_LINES, 1));
